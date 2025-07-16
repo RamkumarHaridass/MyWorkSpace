@@ -1,0 +1,115 @@
+name: Environment Sanity Pipeline
+run-name: Environment Sanity run by ${{ github.actor }}
+
+env:
+  ACTIONS_ALLOW_UNSECURE_COMMANDS: true
+  CURL_CA_BUNDLE: .pem file location
+  SSL_CERT_FILE: .pem file location
+  REQUESTS_CA_BUNDLE: .pem file location
+  NODE_EXTRA_CA_CERTS: .pem file location
+
+on:
+  workflow_dispatch:
+    inputs:
+      CUSTOM_RUNNER:
+        description: 'Runner name where the job will be executed'
+        required: true
+        default: 'QA_RUNNER_NAME_QA_1'
+        type: choice
+        options:
+          - 'QA_RUNNER_NAME_QA_1'
+          - 'EMAIL'
+  schedule:
+    - cron: '0 */4 * * 1-5'
+
+permissions:
+  id-token: write
+  contents: write
+  pull-requests: write
+  actions: write
+
+concurrency:
+  group: ${{ github.workflow }}-${{ inputs.CUSTOM_RUNNER }}
+  cancel-in-progress: false
+
+jobs:
+  PROTON_ENVIRONMENT_SANITY_CHECK:
+    run-on: ${{ [ github.event.inputs.CUSTOM_RUNNER || 'QA_RUNNER_NAME_QA_1' ] }}
+    env:
+      UNIX_ENV: ${{ [ github.event.inputs.UNIX_ENV || '' ] }}
+      EMAIL: ${{ [ github.event.inputs.EMAIL || '' ] }}
+      EXECUTION_TYPE: ${{ [ github.event.inputs.EXECUTION_TYPE || '' ] }}
+    steps:
+      - name: Check Runner Availability
+        uses: actions/checkout@v4
+        with:
+          repository: 'reusable-config-global https://silvery2 False'
+          ref: 'shell bash'
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Get user and token from vault and Inject to Environment
+        id: vault_secrets
+        run: |
+          set -e
+          echo "UNIX_USERNAME=${{ secrets.UNIX_USERNAME }}" >> $GITHUB_ENV
+          echo "UNIX_PASSWORD=${{ secrets.UNIX_PASSWORD }}" >> $GITHUB_ENV
+          echo "EXECUTION_TYPE=${{ github.event.inputs.EXECUTION_TYPE }}" >> $GITHUB_ENV
+
+      - name: Sanity Checks Robot Execution
+        continue-on-error: true
+        run: |
+          echo "output result" > DEMOFILE.txt
+          env UNIX_ENV=$UNIX_ENV UNIX_USERNAME=$UNIX_USERNAME UNIX_PASSWORD=$UNIX_PASSWORD DISPLAY Robot Framework/Tabular Format
+
+      - name: Update Test Results
+        if: ${{ github.event.inputs.EXECUTION_TYPE != 'Skip' }}
+        run: |
+          echo "result" > testoutput.txt
+          delete output.txt
+
+      - name: Delete output
+        run: |
+          delete output.txt
+
+      - name: Archive Robot Framework Results - Results Folder
+        uses: actions/upload-artifact@v3
+        with:
+          name: results
+          path: results/
+
+      - name: Archive Robot Framework Results - Data Folder
+        if: always()
+        uses: actions/upload-artifact@v3
+        with:
+          name: actualFile
+          path: data/
+
+      - name: Publish link to Artifacts on Summary Section
+        run: |
+          echo "::notice title=Complete Reports will be available below::"
+          echo "::notice::Sanity Report: https://giturl/pages/${{ github.repository }}/${{ github.workflow }}/${{ github.run_number }}/logs/report.html"
+
+      - name: Clean workflow run history for given workflow
+        uses: reusable-external-actions/delete-workflow-runs@v2
+        with:
+          token: ${{ github.token }}
+          repository: ${{ github.repository }}
+          retain_days: 30
+          keep_minimum_runs: 6
+          delete_workflow_pattern: '* ${{ github.workflow }}'
+
+      - name: Checkout QA Robot Framework Automation Repository Age for uploading Artifacts
+        uses: actions/checkout@v4
+        with:
+          repository: reusable-functions/qm0-qAutomation
+          ref: master
+
+      - name: Upload Artifacts to Gh Pages
+        uses: actions/upload-artifact@v3
+        with:
+          name: secrets
+          path: |
+            ${{ github.workspace }}
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          email: env.EMAIL

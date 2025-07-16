@@ -1,0 +1,27 @@
+name: "Retrieve Vault Secrets for APP"
+description: "Fetch user credentials from vault for APP"
+outputs:
+  ab_user:
+    description: "AB user"
+
+runs:
+  using: "composite"
+  steps:
+    - name: Get user and token from vault
+      id: get_vault_secrets
+      uses: reusable-external-actions/hashicorp-vault-action@v3
+      env:
+        mount_path: github/data
+        shared_secrets_path: AUTOMATION/CICD/CREDS
+        ab_user: ${{ env.ab_user }}
+      with:
+        url: https://vault.com/
+        method: jwt
+        path: github
+        role: APP
+        secrets: |
+          ${{env.mount_path}}/${{ env.shared_secrets_path }} ${{ env.ab_user }} | ab_user;
+    - name: Set outputs
+      run: |
+        echo "ab_user=${{ steps.get_vault_secrets.outputs.ab_user }}" >> $GITHUB_ENV
+      shell : bash
