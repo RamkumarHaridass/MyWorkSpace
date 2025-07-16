@@ -1,4 +1,4 @@
-node ('SE151872.devfg.xxx.com') {
+node ('82.devfg.xxx.com') {
 
   wrap([$class: 'BuildUser']) {
 
@@ -624,7 +624,7 @@ pipeline {
 
     parameters {
 
-        booleanParam(name: 'CTHUBMS', defaultValue: false, description: 'Run CTHUBMS stage') // Single parameter
+        booleanParam(name: 'HUB', defaultValue: false, description: 'Run HUB stage') // Single parameter
 
     }
 
@@ -632,15 +632,15 @@ pipeline {
 
     stages {
 
-        stage('CTHUBMS') { // Single stage
+        stage('HUB') { // Single stage
 
             steps {
 
                 script {
 
-                    if (params.CTHUBMS) { // Check if CTHUBMS is enabled
+                    if (params.HUB) { // Check if HUB is enabled
 
-                        echo "Running CTHUBMS Stage"
+                        echo "Running HUB Stage"
 
  
 
@@ -658,9 +658,9 @@ pipeline {
 
                         // Handle job result
 
-                        def cthubmsResult = jobRun.result
+                        def HUBResult = jobRun.result
 
-                        if (cthubmsResult == 'FAILURE') {
+                        if (HUBResult == 'FAILURE') {
 
                             catchError(buildResult: 'FAILURE', stageResult: 'FAILURE') {
 
@@ -672,7 +672,7 @@ pipeline {
 
                     } else {
 
-                        echo "CTHUBMS stage skipped because it is marked as False"
+                        echo "HUB stage skipped because it is marked as False"
 
                         catchError(buildResult: 'SUCCESS', stageResult: 'NOT_BUILT') {
 
