@@ -258,7 +258,7 @@ pipeline {
         string(name: 'BASE_input_TABLE', description: 'input table name for base') // Single parameter
     }
     agent {
-        label 'QA-SE151872' // Specify the Jenkins agent label
+        label 'QA-RS' // Specify the Jenkins agent label
     }
     stages {
         stage('Amount Sum') { // Single stage
